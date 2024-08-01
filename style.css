@@ -1,0 +1,50 @@
+
+QWidget {
+    color: #DDD;
+    font-family: "DM Mono";
+    font-size: 30px;
+    margin: 0;
+}
+
+QPushButton {
+    color: #023;
+    padding: 0px 12px 4px 12px;
+    text-align: center;
+    background: bisque;
+    border-radius: 10px;
+    border: #CCCCCC 2px solid;
+}
+
+QPushButton:hover {
+    background: #dfeaae;
+}
+
+QPushButton:pressed {
+    color: white;
+    background: black;
+}
+
+QLabel#header {
+    color: bisque;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+QWidget#mainLayout {
+    padding: 10px;
+    background-color: #505456;
+    border-radius: 15px;
+
+}
+
+QLabel#descLabel {
+    font-size: 20px;
+    color: #888888;
+    margin-bottom: 10px;
+}
+
+QWidget#cameraWidget {
+    padding: 10px;
+    background-color: #333;
+    border-radius: 15px;
+}
