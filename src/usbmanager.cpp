@@ -37,11 +37,16 @@ UsbManager::~UsbManager() {
 
 void UsbManager::refreshDevices() {
     QProcess proc;
-    proc.start("gphoto2", {"--auto-detect", "--parsable"});
+
+    proc.start("gphoto2", {"--auto-detect"});
     proc.setReadChannel(QProcess::StandardOutput);
+
+
     if (!proc.waitForReadyRead()) {
         proc.close();
-        qFatal("Failed to wait for process");
+        proc.setReadChannel(QProcess::StandardError);
+        proc.readAll();
+        qFatal("Failed to wait for process: ");
     }
 
     QSet<QPair<int, int>> connectedPorts;

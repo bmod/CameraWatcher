@@ -46,6 +46,7 @@ CameraWindow::CameraWindow(UsbManager& usbMan) : mMainWidget(usbMan), mUsbMan(us
     connect(&mUsbMan, &UsbManager::deviceAdded, this, &CameraWindow::onListResized);
     connect(&mUsbMan, &UsbManager::deviceRemoved, this, &CameraWindow::onListResized);
 
+    QTimer::singleShot(100, [this] { onListResized(); });
 }
 
 void CameraWindow::loadStyle() {
