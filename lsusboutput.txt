@@ -1,4 +1,0 @@
-Model                          Port            
-----------------------------------------------------------
-Fuji Fujifilm X-T5             usb:001,038     
-GoPro HERO5 Session            usb:001,039     
