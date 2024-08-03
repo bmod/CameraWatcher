@@ -6,16 +6,15 @@
 #include <libudev.h>
 
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     QApplication::setApplicationName("CameraWatcher");
     QApplication::setOrganizationName("CoreSmith");
 
     QApplication a(argc, argv);
 
-    UsbManager usbManager;
+    CamWatcher::UsbManager usbManager;
 
-    CameraWindow win(usbManager);
+    CamWatcher::CameraWindow win(usbManager);
     win.show();
 
     return QApplication::exec();

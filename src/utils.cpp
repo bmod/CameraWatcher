@@ -1,11 +1,11 @@
 #include "utils.h"
 
-#include <QTimer>
 #include <QApplication>
+#include <QTimer>
 
 #include "slugify.hpp"
 
-void utils::invokeOnMainThread(std::function<void()> func) {
+void CamWatcher::invokeOnMainThread(std::function<void()> func) {
     // any thread
     const auto timer = new QTimer();
     timer->moveToThread(qApp->thread());
@@ -18,7 +18,7 @@ void utils::invokeOnMainThread(std::function<void()> func) {
     QMetaObject::invokeMethod(timer, "start", Qt::QueuedConnection, Q_ARG(int, 0));
 }
 
-QString utils::qSlugify(const QString& text) {
+QString CamWatcher::qSlugify(const QString& text) {
     const auto str = text.toStdString();
     const auto slug = slugify(str);
     return QString::fromStdString(slug);

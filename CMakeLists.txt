@@ -10,6 +10,11 @@ set(CMAKE_AUTOUIC ON)
 
 include(FetchContent)
 
+FetchContent_Declare(gphoto2
+        GIT_REPOSITORY https://github.com/gphoto/libgphoto2.git
+        GIT_TAG v2.5.31)
+FetchContent_MakeAvailable(gphoto2)
+
 find_package(Qt5 COMPONENTS
         Core
         Gui
@@ -26,4 +31,5 @@ target_link_libraries(${PROJECT_NAME}
         Qt5::Gui
         Qt5::Widgets
         udev
+        gphoto2
 )

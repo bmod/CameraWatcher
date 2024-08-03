@@ -7,6 +7,8 @@
 #include <QUuid>
 #include <QDateTime>
 
+using namespace CamWatcher;
+
 CameraWidget::CameraWidget(UsbDevice& device) : mDevice(device) {
     setObjectName("cameraWidget");
     setLayout(&mVBoxLayout);

@@ -2,13 +2,14 @@
 
 #include "utils.h"
 
-#include <QtDebug>
-
 #include <QDateTime>
 #include <QDir>
 #include <QProcess>
 #include <QRegularExpressionMatch>
 #include <QSet>
+#include <QtDebug>
+
+using namespace CamWatcher;
 
 QString createPortPath(const int bus, const int port) {
     const auto busStr = QString("%1").arg(bus, 3, 10, QChar('0'));
@@ -111,7 +112,6 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
     usbDevice.setState(UsbDevice::Copy, "Copying files...");
 
     QThread* thread = QThread::create([this, bus, port, usbFiles, destPath] {
-        const static QRegularExpression reDcim("./DCIM(/.+)");
         const auto portPath = createPortPath(bus, port);
 
         const auto dev = device(bus, port);
@@ -125,8 +125,7 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
         int kbps = 0;
         for (const auto& f: usbFiles) totalKbs += f.kbSize();
 
-        for (int i = 0, len = usbFiles.size(); i < len; i++) {
-            const auto& usbFile = usbFiles.at(i);
+        for (const auto& usbFile: usbFiles) {
             if (dev->state() == UsbDevice::Cancel)
                 break;
 
@@ -137,15 +136,15 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
             }
 
             // Notify gui
-            utils::invokeOnMainThread([this, dev, totalFiles, copiedFiles, totalKbs, copiedKbs, kbps] {
-                CopyStats stats{totalKbs, copiedKbs, totalFiles,copiedFiles, kbps};
+            invokeOnMainThread([this, dev, totalFiles, copiedFiles, totalKbs, copiedKbs, kbps] {
+                CopyStats stats{totalKbs, copiedKbs, totalFiles, copiedFiles, kbps};
                 QVariant v;
                 v.setValue(stats);
                 dev->setState(UsbDevice::Copy, v);
             });
 
             // Construct a nice path to dump to
-            auto camSlug = utils::qSlugify(dev->name());
+            auto camSlug = qSlugify(dev->name());
             auto outDirPath = destPath + '/' + camSlug;
 
             // Make sure dest dir exists
@@ -162,10 +161,9 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
 
             const auto proc = new QProcess();
             proc->setWorkingDirectory(outDirPath);
+
             QStringList cmd = {"gphoto2", "--get-file=" + idxStr, "-q", "--port=" + portPath};
-
             qInfo() << "Run Cmd:" << cmd.join(' ');
-
             auto exe = cmd.takeFirst();
             proc->start(exe, cmd);
             proc->waitForFinished();
@@ -189,7 +187,7 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
         const auto secondsElapsed = QDateTime::currentSecsSinceEpoch() - copyStartTime;
         const auto timeTaken = QDateTime::fromTime_t(secondsElapsed).toUTC().toString("hh:mm:ss");
 
-        utils::invokeOnMainThread([this, dev, copiedFiles, timeTaken] {
+        invokeOnMainThread([this, dev, copiedFiles, timeTaken] {
             const auto msg = QString("Done! Copied %1 files. Took %2").arg(copiedFiles).arg(timeTaken);
             dev->setState(UsbDevice::Done, msg);
         });
@@ -248,7 +246,7 @@ void UsbManager::listFiles(UsbDevice& dev) {
         proc->setReadChannel(QProcess::StandardOutput);
 
         if (!proc->waitForReadyRead()) {
-            utils::invokeOnMainThread([this, bus, port] {
+            invokeOnMainThread([this, bus, port] {
                 if (const auto d = device(bus, port))
                     d->setState(UsbDevice::Error, "Busy");
             });
@@ -295,7 +293,7 @@ void UsbManager::listFiles(UsbDevice& dev) {
             }
         }
 
-        utils::invokeOnMainThread([this, bus, port, paths] {
+        invokeOnMainThread([this, bus, port, paths] {
             const auto d = device(bus, port);
             if (!d)
                 return;

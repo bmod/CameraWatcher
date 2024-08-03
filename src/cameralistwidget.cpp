@@ -1,5 +1,7 @@
 #include "cameralistwidget.h"
 
+using namespace CamWatcher;
+
 CameraListWidget::CameraListWidget(UsbManager& usb) : mUsb(usb) {
     setLayout(&mLayout);
     mLayout.setContentsMargins({});

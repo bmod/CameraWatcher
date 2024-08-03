@@ -5,6 +5,8 @@
 #include <QMetaEnum>
 #include <QtDebug>
 
+using namespace CamWatcher;
+
 UsbFile::UsbFile(const int gPhotoIndex, QString filePath, QString flags, const int kbSize, QString mediaType,
                  const int timeStamp)
     : mGPhotoIndex(gPhotoIndex), mFilePath(std::move(filePath)), mFlags(std::move(flags)), mKbSize(kbSize),
@@ -33,7 +35,7 @@ UsbDevice::UsbDevice(UsbManager& usbManager, const QString& name, const int bus,
     : mUsbManager(usbManager), mName(name), mBus(bus), mPort(port), mSettingsKey(name), mState(Idle) {}
 
 void UsbDevice::setState(const State state, const StateParm& parm) {
-    utils::invokeOnMainThread([this, state, parm] {
+    invokeOnMainThread([this, state, parm] {
         if (mState == state && mStateParm == parm)
             return;
 

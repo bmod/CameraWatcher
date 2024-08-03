@@ -6,6 +6,8 @@
 #include <QTimer>
 #include <QtDebug>
 
+using namespace CamWatcher;
+
 MainLayoutWidget::MainLayoutWidget(UsbManager& usbMan) : mUsbMan(usbMan), mCameraListWidget(usbMan) {
     setObjectName("mainLayout");
     setLayout(&mLayout);
@@ -29,7 +31,7 @@ void MainLayoutWidget::updateLabel() {
 
 CameraWindow::CameraWindow(UsbManager& usbMan) : mMainWidget(usbMan), mUsbMan(usbMan) {
     setAttribute(Qt::WA_TranslucentBackground);
-    setWindowFlags(Qt::CustomizeWindowHint);
+    setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowStaysOnTopHint);
 
     setCentralWidget(&mMainWidget);
 
