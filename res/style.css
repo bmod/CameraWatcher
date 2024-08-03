@@ -6,7 +6,7 @@ b {
 QWidget {
     color: #DDD;
     font-family: "DM Mono";
-    font-size: 30px;
+    font-size: 20px;
     margin: 0;
 }
 
@@ -28,16 +28,26 @@ QPushButton:pressed {
     background: black;
 }
 
+QProgressBar {
+    background-color: #777;
+    border-radius: 10px;
+}
+
+QProgressBar::chunk {
+    background-color: #dfeaae;
+    border-radius: 10px;
+}
+
 QLabel#header {
-    color: bisque;
+    color: #777;
     text-align: center;
-    margin-bottom: 20px;
+    margin-left: 4px;
 }
 
 QWidget#mainLayout {
-    padding: 10px;
+    padding: 8px;
     background-color: #505456;
-    border-radius: 15px;
+    border-radius: 10px;
 
 }
 

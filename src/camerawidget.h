@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QProgressBar>
 
 #include "usbdevice.h"
 #include "usbmanager.h"
@@ -38,6 +39,7 @@ private:
     QPushButton mLeftButton;
     QPushButton mMiddleButton;
     QPushButton mRightButton;
+    QProgressBar mProgressBar;
 
     QMap<UsbDevice::State, std::function<void(const StateParm&)>> mStateHandlers;
 };

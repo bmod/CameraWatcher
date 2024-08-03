@@ -5,7 +5,7 @@
 #include <utility>
 
 
-using StateParm = QString;
+using StateParm = QVariant;
 
 class UsbManager;
 

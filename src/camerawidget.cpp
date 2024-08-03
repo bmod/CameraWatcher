@@ -5,6 +5,7 @@
 #include <QAction>
 #include <QSet>
 #include <QUuid>
+#include <QDateTime>
 
 CameraWidget::CameraWidget(UsbDevice& device) : mDevice(device) {
     setObjectName("cameraWidget");
@@ -16,9 +17,11 @@ CameraWidget::CameraWidget(UsbDevice& device) : mDevice(device) {
         mDescLabel.setText("Description Here");
         mDescLabel.setObjectName("descLabel");
         mVBoxLayout.addWidget(&mDescLabel);
+        mProgressBar.setTextVisible(false);
 
         mVBoxLayout.addLayout(&mHBoxLayout);
         {
+            mHBoxLayout.addWidget(&mProgressBar);
             mHBoxLayout.addWidget(&mLeftButton);
             mHBoxLayout.addWidget(&mMiddleButton);
             mHBoxLayout.addWidget(&mRightButton);
@@ -49,6 +52,7 @@ void CameraWidget::onDeviceStateChanged(const UsbDevice::State& state, const Sta
     mLeftButton.setVisible(false);
     mMiddleButton.setVisible(false);
     mRightButton.setVisible(false);
+    mProgressBar.setVisible(false);
 
     mLeftButton.disconnect();
     mMiddleButton.disconnect();
@@ -88,7 +92,7 @@ QString CameraWidget::ensureDestinationPath(bool forcePrompt) {
 
 
 void CameraWidget::state_Init(const StateParm& parm) {
-    mDescLabel.setText(parm);
+    mDescLabel.setText(parm.toString());
     mLeftButton.setVisible(false);
     mRightButton.setVisible(false);
 }
@@ -139,16 +143,36 @@ void CameraWidget::state_VerifyCopy(const StateParm& parm) {
 void CameraWidget::state_StartCopy(const StateParm& parm) {}
 
 void CameraWidget::state_Copy(const StateParm& parm) {
-    mDescLabel.setText(parm);
+    auto stats = parm.value<CopyStats>();
+
+    auto msg = QString("Copying file %1/%2").arg(stats.copiedFiles + 1).arg(stats.totalFiles);
+    if (stats.copiedKbs > 0) {
+        const auto kbsLeft = stats.totalKbs - stats.copiedKbs;
+        const auto secondsRemaining = kbsLeft / stats.kbps;
+        auto fmtTime = QDateTime::fromTime_t(secondsRemaining).toUTC().toString("hh:mm:ss");
+        auto eta = QString(" (ETA %1)").arg(fmtTime);
+        msg += eta;
+
+        mProgressBar.setRange(0, stats.totalKbs);
+        mProgressBar.setValue(stats.copiedKbs);
+    } else {
+        mProgressBar.setRange(0, 0);
+        mProgressBar.setValue(0);
+    }
+    mDescLabel.setText(msg);
+
+    mProgressBar.setVisible(true);
+
     mLeftButton.setText("Cancel");
     mLeftButton.setVisible(true);
+    mProgressBar.setVisible(true);
     connect(&mLeftButton, &QPushButton::clicked, [this] {
         mDevice.usbManager().cancelDownload(mDevice);
     });
 }
 
 void CameraWidget::state_Done(const StateParm& parm) {
-    mDescLabel.setText(parm);
+    mDescLabel.setText(parm.toString());
     mLeftButton.setVisible(true);
     mLeftButton.setText("Okay");
     connect(&mLeftButton, &QPushButton::clicked, [this] {
@@ -157,7 +181,7 @@ void CameraWidget::state_Done(const StateParm& parm) {
 }
 
 void CameraWidget::state_Error(const StateParm& parm) {
-    mDescLabel.setText(parm);
+    mDescLabel.setText(parm.toString());
 }
 
 void CameraWidget::state_Removed(const StateParm& parm) {}

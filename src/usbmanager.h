@@ -7,6 +7,15 @@
 #include <QRegularExpression>
 #include <QThread>
 
+struct CopyStats {
+    int totalKbs;
+    int copiedKbs;
+    int totalFiles;
+    int copiedFiles;
+    int kbps;
+};
+Q_DECLARE_METATYPE(CopyStats)
+
 class UsbManager final : public QObject {
     Q_OBJECT
 public:

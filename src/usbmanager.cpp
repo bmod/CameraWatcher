@@ -118,9 +118,11 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
 
         const auto copyStartTime = QDateTime::currentSecsSinceEpoch();
 
+        int totalFiles = usbFiles.size();
         int copiedFiles = 0;
         int copiedKbs = 0;
         int totalKbs = 0;
+        int kbps = 0;
         for (const auto& f: usbFiles) totalKbs += f.kbSize();
 
         for (int i = 0, len = usbFiles.size(); i < len; i++) {
@@ -129,21 +131,17 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
                 break;
 
             // Notify GUI
-            QString eta;
             if (copiedKbs) {
                 const auto elapsedTime = QDateTime::currentSecsSinceEpoch() - copyStartTime;
-                const auto kbps = copiedKbs / static_cast<float>(elapsedTime);
-                const auto kbsLeft = totalKbs - copiedKbs;
-                const auto secondsRemaining = kbsLeft / kbps;
-                auto fmtTime = QDateTime::fromTime_t(secondsRemaining).toUTC().toString("hh:mm:ss");
-                eta = QString("ETA %1").arg(fmtTime);
+                kbps = copiedKbs / static_cast<float>(elapsedTime);
             }
 
-            utils::invokeOnMainThread([this, dev, i, len, eta] {
-                auto msg = QString("Copying %1 / %2").arg(i + 1).arg(len);
-                if (!eta.isEmpty())
-                    msg = QString("%1 (%2)").arg(msg, eta);
-                dev->setState(UsbDevice::Copy, msg);
+            // Notify gui
+            utils::invokeOnMainThread([this, dev, totalFiles, copiedFiles, totalKbs, copiedKbs, kbps] {
+                CopyStats stats{totalKbs, copiedKbs, totalFiles,copiedFiles, kbps};
+                QVariant v;
+                v.setValue(stats);
+                dev->setState(UsbDevice::Copy, v);
             });
 
             // Construct a nice path to dump to
@@ -151,18 +149,38 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
             auto outDirPath = destPath + '/' + camSlug;
 
             // Make sure dest dir exists
-            if (QDir outDir(outDirPath); !outDir.exists())
-                outDir.mkpath(".");
+            QDir outDir(outDirPath);
+            if (!outDir.exists()) {
+                if (!outDir.mkpath(".")) {
 
+                    StateParm parm = QString("Failed to create dir:\n%1").arg(outDir.path());
+                    dev->setState(UsbDevice::Error, parm);
+                    return;
+                }
+            }
             auto idxStr = QString::number(usbFile.gPhotoIndex());
 
             const auto proc = new QProcess();
             proc->setWorkingDirectory(outDirPath);
-            proc->start("gphoto2", {"--get-file=" + idxStr, "-q", "--port=" + portPath});
-            proc->setReadChannel(QProcess::StandardOutput);
+            QStringList cmd = {"gphoto2", "--get-file=" + idxStr, "-q", "--port=" + portPath};
+
+            qInfo() << "Run Cmd:" << cmd.join(' ');
+
+            auto exe = cmd.takeFirst();
+            proc->start(exe, cmd);
             proc->waitForFinished();
+            auto err = proc->readAllStandardError();
+            if (!err.isEmpty()) {
+                qFatal("%s", err.toStdString().c_str());
+            }
+            auto outStr = proc->readAllStandardOutput();
+
+            qInfo() << "STDOUT:" << outStr;
+            qInfo() << "Exit Code:" << proc->exitStatus();
+
             proc->close();
             proc->deleteLater();
+
 
             copiedKbs += usbFile.kbSize();
             copiedFiles++;

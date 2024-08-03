@@ -1,4 +1,5 @@
 #include "usbdevice.h"
+#include "utils.h"
 
 #include <QFileInfo>
 #include <QMetaEnum>
@@ -32,10 +33,12 @@ UsbDevice::UsbDevice(UsbManager& usbManager, const QString& name, const int bus,
     : mUsbManager(usbManager), mName(name), mBus(bus), mPort(port), mSettingsKey(name), mState(Idle) {}
 
 void UsbDevice::setState(const State state, const StateParm& parm) {
-    if (mState == state && mStateParm == parm)
-        return;
+    utils::invokeOnMainThread([this, state, parm] {
+        if (mState == state && mStateParm == parm)
+            return;
 
-    forceState(state, parm);
+        forceState(state, parm);
+    });
 }
 
 void UsbDevice::resetState() {
@@ -95,7 +98,7 @@ UsbManager& UsbDevice::usbManager() const {
 }
 
 void UsbDevice::forceState(const State state, const StateParm& parm) {
-    const auto msg = QString("[STATE(%1)] %2 (%3)").arg(name(), QMetaEnum::fromType<State>().valueToKey(state), parm);
+    const auto msg = QString("[STATE(%1)] %2 (%3)").arg(name(), QMetaEnum::fromType<State>().valueToKey(state), parm.toString());
     qDebug() << msg;
 
     mState = state;
