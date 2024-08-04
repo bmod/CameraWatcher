@@ -26,7 +26,6 @@ namespace CamWatcher {
         void state_Init(const StateParm& parm);
         void state_Idle(const StateParm& parm);
         void state_VerifyCopy(const StateParm& parm);
-        void state_StartCopy(const StateParm& parm);
         void state_Copy(const StateParm& parm);
         void state_Done(const StateParm& parm);
         void state_Error(const StateParm& parm);

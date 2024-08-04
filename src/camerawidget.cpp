@@ -101,7 +101,7 @@ void CameraWidget::state_Idle(const StateParm& parm) {
 
     mDescLabel.setText(QString("File count: %1").arg(mDevice.fileCount()));
 
-    if (device().fileCount() == 0) {
+    if (mDevice.fileCount() == 0) {
         return;
     }
 
@@ -148,8 +148,6 @@ void CameraWidget::state_VerifyCopy(const StateParm& parm) {
     mRightButton.setText("Cancel");
     connect(&mRightButton, &QPushButton::clicked, [this] { setState(UsbDevice::Idle); });
 }
-
-void CameraWidget::state_StartCopy(const StateParm& parm) {}
 
 void CameraWidget::state_Copy(const StateParm& parm) {
     auto stats = parm.value<CopyStats>();
