@@ -1,6 +1,9 @@
 <?xml version="1.0" ?>
 <RCC>
 	<qresource>
+		<file>DMMono-Light.ttf</file>
+		<file>DMMono-Medium.ttf</file>
+		<file>DMMono-Regular.ttf</file>
 		<file>style.css</file>
 	</qresource>
 </RCC>
