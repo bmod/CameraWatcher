@@ -34,7 +34,6 @@ CameraWidget::CameraWidget(UsbDevice& device) : mDevice(device) {
             {UsbDevice::State::Init, std::bind(&CameraWidget::state_Init, this, std::placeholders::_1)},
             {UsbDevice::State::Idle, std::bind(&CameraWidget::state_Idle, this, std::placeholders::_1)},
             {UsbDevice::State::VerifyCopy, std::bind(&CameraWidget::state_VerifyCopy, this, std::placeholders::_1)},
-            {UsbDevice::State::StartCopy, std::bind(&CameraWidget::state_StartCopy, this, std::placeholders::_1)},
             {UsbDevice::State::Copy, std::bind(&CameraWidget::state_Copy, this, std::placeholders::_1)},
             {UsbDevice::State::Done, std::bind(&CameraWidget::state_Done, this, std::placeholders::_1)},
             {UsbDevice::State::Error, std::bind(&CameraWidget::state_Error, this, std::placeholders::_1)},
