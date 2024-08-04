@@ -169,12 +169,12 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
             proc->waitForFinished();
             auto err = proc->readAllStandardError();
             if (!err.isEmpty()) {
-                qFatal("%s", err.toStdString().c_str());
+                auto errStr = err.toStdString().c_str();
+                invokeOnMainThread([dev, errStr] {
+                    dev->setState(UsbDevice::Done, errStr);
+                });
             }
             auto outStr = proc->readAllStandardOutput();
-
-            qInfo() << "STDOUT:" << outStr;
-            qInfo() << "Exit Code:" << proc->exitStatus();
 
             proc->close();
             proc->deleteLater();
