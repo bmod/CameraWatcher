@@ -103,7 +103,7 @@ int UsbManager::deviceCount() const {
 }
 
 
-void UsbManager::downloadFiles(UsbDevice& usbDevice) {
+void UsbManager::downloadFiles(UsbDevice& usbDevice, bool removeOriginals) {
     int bus = usbDevice.bus();
     int port = usbDevice.port();
     auto usbFiles = usbDevice.files();
@@ -111,7 +111,7 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
 
     usbDevice.setState(UsbDevice::Copy, "Copying files...");
 
-    QThread* thread = QThread::create([this, bus, port, usbFiles, destPath] {
+    QThread* thread = QThread::create([this, removeOriginals, bus, port, usbFiles, destPath] {
         const auto portPath = createPortPath(bus, port);
 
         const auto dev = device(bus, port);
@@ -136,8 +136,8 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
             }
 
             // Notify gui
-            invokeOnMainThread([this, dev, totalFiles, copiedFiles, totalKbs, copiedKbs, kbps] {
-                CopyStats stats{totalKbs, copiedKbs, totalFiles, copiedFiles, kbps};
+            invokeOnMainThread([removeOriginals, dev, totalFiles, copiedFiles, totalKbs, copiedKbs, kbps] {
+                CopyStats stats{removeOriginals, totalKbs, copiedKbs, totalFiles, copiedFiles, kbps};
                 QVariant v;
                 v.setValue(stats);
                 dev->setState(UsbDevice::Copy, v);
@@ -159,9 +159,9 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
             }
             auto idxStr = QString::number(usbFile.gPhotoIndex());
 
+            // Copy!
             const auto proc = new QProcess();
             proc->setWorkingDirectory(outDirPath);
-
             QStringList cmd = {"gphoto2", "--get-file=" + idxStr, "-q", "--port=" + portPath};
             qInfo() << "Run Cmd:" << cmd.join(' ');
             auto exe = cmd.takeFirst();
@@ -174,11 +174,25 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice) {
                     dev->setState(UsbDevice::Done, errStr);
                 });
             }
-            auto outStr = proc->readAllStandardOutput();
 
             proc->close();
             proc->deleteLater();
 
+            // Delete original if requested
+            if (removeOriginals) {
+                QStringList removeCmd = {"gphoto2", "--delete-file=" + idxStr, "-q", "--port=" + portPath};
+                auto remProc = new QProcess();
+                auto exe2 = removeCmd.takeFirst();
+                remProc->start(exe2, removeCmd);
+                remProc->waitForFinished();
+                auto remErr = proc->readAllStandardError();
+                if (!remErr.isEmpty()) {
+                    auto remErrStr = err.toStdString().c_str();
+                    invokeOnMainThread([dev, remErrStr] {
+                        dev->setState(UsbDevice::Done, remErrStr);
+                    });
+                }
+            }
 
             copiedKbs += usbFile.kbSize();
             copiedFiles++;
@@ -242,7 +256,10 @@ void UsbManager::listFiles(UsbDevice& dev) {
         const auto portPath = createPortPath(bus, port);
 
         const auto proc = new QProcess();
-        proc->start("gphoto2", {"--list-files", "--port=" + portPath});
+        QStringList cmd{"gphoto2", "--list-files", "--port=" + portPath};
+        auto exe = cmd.takeFirst();
+
+        proc->start(exe, cmd);
         proc->setReadChannel(QProcess::StandardOutput);
 
         if (!proc->waitForReadyRead()) {

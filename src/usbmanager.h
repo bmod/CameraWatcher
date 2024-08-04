@@ -10,6 +10,7 @@
 namespace CamWatcher {
 
     struct CopyStats {
+        bool removeOriginals;
         int totalKbs;
         int copiedKbs;
         int totalFiles;
@@ -27,7 +28,7 @@ namespace CamWatcher {
         [[nodiscard]] const std::vector<std::unique_ptr<UsbDevice>>& devices() const;
         [[nodiscard]] UsbDevice* device(int bus, int port) const;
         [[nodiscard]] int deviceCount() const;
-        void downloadFiles(UsbDevice& usbDevice);
+        void downloadFiles(UsbDevice& usbDevice, bool removeOriginals);
         void cancelDownload(UsbDevice& dev);
 
     Q_SIGNALS:

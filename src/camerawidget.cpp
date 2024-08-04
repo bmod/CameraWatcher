@@ -95,8 +95,6 @@ QString CameraWidget::ensureDestinationPath(bool forcePrompt) {
 
 void CameraWidget::state_Init(const StateParm& parm) {
     mDescLabel.setText(parm.toString());
-    mLeftButton.setVisible(false);
-    mRightButton.setVisible(false);
 }
 
 void CameraWidget::state_Idle(const StateParm& parm) {
@@ -104,30 +102,39 @@ void CameraWidget::state_Idle(const StateParm& parm) {
     mDescLabel.setText(QString("File count: %1").arg(mDevice.fileCount()));
 
     if (device().fileCount() == 0) {
-        mLeftButton.setVisible(false);
-        mRightButton.setVisible(false);
         return;
     }
 
     mLeftButton.setVisible(true);
     mLeftButton.setText("Copy");
     connect(&mLeftButton, &QPushButton::clicked, [this] {
-        setState(UsbDevice::State::VerifyCopy);
+        bool removeOriginals = false;
+        setState(UsbDevice::State::VerifyCopy, removeOriginals);
     });
-    mRightButton.setVisible(false);
+
+    mRightButton.setVisible(true);
+    mRightButton.setText("Move");
+    connect(&mRightButton, &QPushButton::clicked, [this] {
+        bool removeOriginals = true;
+        setState(UsbDevice::State::VerifyCopy, removeOriginals);
+    });
 }
 
 void CameraWidget::state_VerifyCopy(const StateParm& parm) {
-    mDescLabel.setText("Where to copy to?");
+    bool removeOriginals = parm.toBool();
+    auto copyOrMove = removeOriginals ? "move" : "copy";
+    auto copyOrMoveC = removeOriginals ? "Move" : "Copy";
+
+    mDescLabel.setText(QString("Where to %1 to?").arg(copyOrMove));
 
     const auto path = ensureDestinationPath();
 
-    mDescLabel.setText("Copy here? <b>" + path + "</b>");
+    mDescLabel.setText(QString("%1 here?\n%2").arg(copyOrMoveC).arg(path));
 
     mLeftButton.setVisible(true);
     mLeftButton.setText("Yes");
-    connect(&mLeftButton, &QPushButton::clicked, [this] {
-        mDevice.usbManager().downloadFiles(mDevice);
+    connect(&mLeftButton, &QPushButton::clicked, [this, removeOriginals] {
+        mDevice.usbManager().downloadFiles(mDevice, removeOriginals);
     });
 
     mMiddleButton.setVisible(true);
@@ -146,8 +153,9 @@ void CameraWidget::state_StartCopy(const StateParm& parm) {}
 
 void CameraWidget::state_Copy(const StateParm& parm) {
     auto stats = parm.value<CopyStats>();
+    auto copyingOrMoving = stats.removeOriginals ? "Moving" : "Copying";
 
-    auto msg = QString("Copying file %1/%2").arg(stats.copiedFiles + 1).arg(stats.totalFiles);
+    auto msg = QString("%1 file %2/%3").arg(copyingOrMoving).arg(stats.copiedFiles + 1).arg(stats.totalFiles);
     if (stats.copiedKbs > 0) {
         const auto kbsLeft = stats.totalKbs - stats.copiedKbs;
         const auto secondsRemaining = kbsLeft / stats.kbps;
