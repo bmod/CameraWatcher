@@ -37,22 +37,14 @@ UsbManager::~UsbManager() {
 }
 
 void UsbManager::refreshDevices() {
-    QProcess proc;
+    ProcOutput output = runCmd({"gphoto2", "--auto-detect"});
 
-    proc.start("gphoto2", {"--auto-detect"});
-    proc.setReadChannel(QProcess::StandardOutput);
-
-
-    if (!proc.waitForReadyRead()) {
-        proc.close();
-        proc.setReadChannel(QProcess::StandardError);
-        proc.readAll();
-        qFatal("Failed to wait for process: ");
+    if (output.hasError()) {
+        qFatal("Failed to wait for process");
     }
 
     QSet<QPair<int, int>> connectedPorts;
-    while (proc.canReadLine()) {
-        const QString line = proc.readLine();
+    for (const auto& line : splitLines(output.out)) {
 
         auto match = reBus().match(line);
         if (!match.hasMatch())
@@ -72,8 +64,6 @@ void UsbManager::refreshDevices() {
             listFiles(*devPtr);
         }
     }
-
-    proc.close();
 
     for (int i = mDevices.size() - 1; i >= 0; i--) {
         auto& oldDev = mDevices[i];
@@ -108,8 +98,8 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice, bool removeOriginals) {
     int port = usbDevice.port();
     auto usbFiles = usbDevice.files();
     auto destPath = usbDevice.destFilePath();
-
-    usbDevice.setState(UsbDevice::Copy, "Copying files...");
+    auto copyingOrMoving = removeOriginals ? "Moving" : "Copying";
+    usbDevice.setState(UsbDevice::Copy, QString("%1 files...").arg(copyingOrMoving));
 
     QThread* thread = QThread::create([this, removeOriginals, bus, port, usbFiles, destPath] {
         const auto portPath = createPortPath(bus, port);
@@ -151,7 +141,6 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice, bool removeOriginals) {
             QDir outDir(outDirPath);
             if (!outDir.exists()) {
                 if (!outDir.mkpath(".")) {
-
                     StateParm parm = QString("Failed to create dir:\n%1").arg(outDir.path());
                     dev->setState(UsbDevice::Error, parm);
                     return;
@@ -160,37 +149,25 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice, bool removeOriginals) {
             auto idxStr = QString::number(usbFile.gPhotoIndex());
 
             // Copy!
-            const auto proc = new QProcess();
-            proc->setWorkingDirectory(outDirPath);
-            QStringList cmd = {"gphoto2", "--get-file=" + idxStr, "-q", "--port=" + portPath};
-            qInfo() << "Run Cmd:" << cmd.join(' ');
-            auto exe = cmd.takeFirst();
-            proc->start(exe, cmd);
-            proc->waitForFinished();
-            auto err = proc->readAllStandardError();
-            if (!err.isEmpty()) {
-                auto errStr = err.toStdString().c_str();
-                invokeOnMainThread([dev, errStr] {
-                    dev->setState(UsbDevice::Done, errStr);
+            auto copyOutErr = runCmd({"gphoto2", "--get-file=" + idxStr, "-q", "--port=" + portPath}, outDirPath);
+            if (copyOutErr.hasError()) {
+                invokeOnMainThread([dev, copyOutErr] {
+                    dev->setState(UsbDevice::Done, copyOutErr.err);
                 });
+                return;
             }
-
-            proc->close();
-            proc->deleteLater();
 
             // Delete original if requested
             if (removeOriginals) {
-                QStringList removeCmd = {"gphoto2", "--delete-file=" + idxStr, "-q", "--port=" + portPath};
-                auto remProc = new QProcess();
-                auto exe2 = removeCmd.takeFirst();
-                remProc->start(exe2, removeCmd);
-                remProc->waitForFinished();
-                auto remErr = proc->readAllStandardError();
-                if (!remErr.isEmpty()) {
-                    auto remErrStr = err.toStdString().c_str();
-                    invokeOnMainThread([dev, remErrStr] {
-                        dev->setState(UsbDevice::Done, remErrStr);
+                qDebug() << usbFile.filePath();
+                auto camPath = QFileInfo(usbFile.filePath()).dir().path();
+//                auto remOutErr = runCmd({"gphoto2", "--delete-file=" + idxStr, "-q", "--port=" + portPath}, outDirPath);
+                auto remOutErr = runCmd({"gphoto2", "--delete-file=" + idxStr, "--port=" + portPath, "-f", camPath}, outDirPath);
+                if (remOutErr.hasError()) {
+                    invokeOnMainThread([dev, remOutErr] {
+                        dev->setState(UsbDevice::Done, remOutErr.err);
                     });
+                    return;
                 }
             }
 
@@ -203,6 +180,7 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice, bool removeOriginals) {
 
         invokeOnMainThread([this, dev, copiedFiles, timeTaken] {
             const auto msg = QString("Done! Copied %1 files. Took %2").arg(copiedFiles).arg(timeTaken);
+            refreshDevices();
             dev->setState(UsbDevice::Done, msg);
         });
     });
@@ -254,20 +232,13 @@ void UsbManager::listFiles(UsbDevice& dev) {
 
     QThread* thread = QThread::create([this, bus, port] {
         const auto portPath = createPortPath(bus, port);
+        ProcOutput output = runCmd({"gphoto2", "--list-files", "--port=" + portPath});
 
-        const auto proc = new QProcess();
-        QStringList cmd{"gphoto2", "--list-files", "--port=" + portPath};
-        auto exe = cmd.takeFirst();
-
-        proc->start(exe, cmd);
-        proc->setReadChannel(QProcess::StandardOutput);
-
-        if (!proc->waitForReadyRead()) {
-            invokeOnMainThread([this, bus, port] {
+        if (output.hasError()) {
+            invokeOnMainThread([this, output, bus, port] {
                 if (const auto d = device(bus, port))
-                    d->setState(UsbDevice::Error, "Busy");
+                    d->setState(UsbDevice::Error, output.err);
             });
-            proc->deleteLater();
             return;
         }
 
@@ -285,8 +256,8 @@ void UsbManager::listFiles(UsbDevice& dev) {
 
         QString currentFolder;
         QVector<UsbFile> paths;
-        while (proc->canReadLine()) {
-            const auto line = proc->readLine().trimmed();
+
+        for (const auto& line : splitLines(output.out)) {
 
             if (auto folderMatch = reFolder.match(line); folderMatch.hasMatch()) {
                 currentFolder = folderMatch.captured(1);
@@ -300,7 +271,7 @@ void UsbManager::listFiles(UsbDevice& dev) {
                     continue;
 
                 const int gPhotoIndex = fileMatch.captured(1).toInt();
-                const QString filePath = currentFolder + fileMatch.captured(2);
+                const QString filePath = currentFolder + '/' + fileMatch.captured(2);
                 const QString flags = fileMatch.captured(3);
                 const int kbSize = fileMatch.captured(4).toInt();
                 const QString mediaType = fileMatch.captured(5);
@@ -320,9 +291,6 @@ void UsbManager::listFiles(UsbDevice& dev) {
                 d->setState(UsbDevice::Idle, QString("Files on device: %1").arg(paths.size()));
             }
         });
-
-        proc->close();
-        proc->deleteLater();
     });
 
     connect(thread, &QThread::finished, [thread] {
