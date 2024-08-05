@@ -36,7 +36,6 @@ namespace CamWatcher {
             Init,
             Idle,
             VerifyCopy,
-            StartCopy,
             Copy,
             Done,
             Error,

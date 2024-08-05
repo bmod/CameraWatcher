@@ -183,7 +183,8 @@ void CameraWidget::state_Done(const StateParm& parm) {
     mLeftButton.setVisible(true);
     mLeftButton.setText("Okay");
     connect(&mLeftButton, &QPushButton::clicked, [this] {
-        setState(UsbDevice::Idle);
+        device().usbManager().listFiles(device());
+        setState(UsbDevice::Init);
     });
 }
 

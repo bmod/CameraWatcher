@@ -28,6 +28,7 @@ namespace CamWatcher {
         [[nodiscard]] const std::vector<std::unique_ptr<UsbDevice>>& devices() const;
         [[nodiscard]] UsbDevice* device(int bus, int port) const;
         [[nodiscard]] int deviceCount() const;
+        void listFiles(UsbDevice& dev);
         void downloadFiles(UsbDevice& usbDevice, bool removeOriginals);
         void cancelDownload(UsbDevice& dev);
 
@@ -38,7 +39,6 @@ namespace CamWatcher {
 
     private:
         void listenForEvents();
-        void listFiles(UsbDevice& dev);
 
         std::vector<std::unique_ptr<UsbDevice>> mDevices;
         QProcess mDetectProcess;
