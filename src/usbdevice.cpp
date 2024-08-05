@@ -7,28 +7,16 @@
 
 using namespace CamWatcher;
 
-UsbFile::UsbFile(const int gPhotoIndex, QString filePath, QString flags, const int kbSize, QString mediaType,
-                 const int timeStamp)
-    : mGPhotoIndex(gPhotoIndex), mFilePath(std::move(filePath)), mFlags(std::move(flags)), mKbSize(kbSize),
-      mMediaType(std::move(mediaType)), mTimeStamp(timeStamp) {}
+UsbFile::UsbFile(QString filePath, const int kbSize)
+    : mFilePath(std::move(filePath)),  mKbSize(kbSize){}
 
-int UsbFile::gPhotoIndex() const {
-    return mGPhotoIndex;
-}
+
 QString UsbFile::filePath() const {
     return mFilePath;
 }
-QString UsbFile::flags() const {
-    return mFlags;
-}
+
 int UsbFile::kbSize() const {
     return mKbSize;
-}
-QString UsbFile::mediaType() const {
-    return mMediaType;
-}
-int UsbFile::timeStamp() const {
-    return mTimeStamp;
 }
 
 UsbDevice::UsbDevice(UsbManager& usbManager, const QString& name, const int bus, const int port)
@@ -61,10 +49,6 @@ int UsbDevice::port() const {
 
 const UsbDevice::State& UsbDevice::state() const {
     return mState;
-}
-
-const StateParm& UsbDevice::stateParm() const {
-    return mStateParm;
 }
 
 const QVector<UsbFile>& UsbDevice::files() const {

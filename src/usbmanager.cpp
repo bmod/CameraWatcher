@@ -44,7 +44,7 @@ void UsbManager::refreshDevices() {
     }
 
     QSet<QPair<int, int>> connectedPorts;
-    for (const auto& line : splitLines(output.out)) {
+    for (const auto& line: splitLines(output.out)) {
 
         auto match = reBus().match(line);
         if (!match.hasMatch())
@@ -125,7 +125,7 @@ void UsbManager::listFiles(UsbDevice& dev) {
         QString currentFolder;
         QVector<UsbFile> paths;
 
-        for (const auto& line : splitLines(output.out)) {
+        for (const auto& line: splitLines(output.out)) {
 
             if (auto folderMatch = reFolder.match(line); folderMatch.hasMatch()) {
                 currentFolder = folderMatch.captured(1);
@@ -138,14 +138,14 @@ void UsbManager::listFiles(UsbDevice& dev) {
                 if (auto suffix = QFileInfo(fileName).suffix().toLower(); !allowedExtensions.contains(suffix))
                     continue;
 
-                const int gPhotoIndex = fileMatch.captured(1).toInt();
+//                const int gPhotoIndex = fileMatch.captured(1).toInt();
                 const QString filePath = currentFolder + '/' + fileMatch.captured(2);
-                const QString flags = fileMatch.captured(3);
+//                const QString flags = fileMatch.captured(3);
                 const int kbSize = fileMatch.captured(4).toInt();
-                const QString mediaType = fileMatch.captured(5);
-                const int timeStamp = fileMatch.captured(6).toInt();
+//                const QString mediaType = fileMatch.captured(5);
+//                const int timeStamp = fileMatch.captured(6).toInt();
 
-                paths.append({gPhotoIndex, filePath, flags, kbSize, mediaType, timeStamp});
+                paths.append({filePath, kbSize});
             }
         }
 
@@ -190,12 +190,8 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice, bool removeOriginals) {
         int kbps = 0;
         for (const auto& f: usbFiles) totalKbs += f.kbSize();
 
-        QVectorIterator<UsbFile> it(usbFiles);
-        it.toBack();
-        while (it.hasPrevious()) {
-            auto usbFile = it.previous();
+        for (const auto& usbFile: usbFiles) {
             if (dev->state() == UsbDevice::Cancel) {
-
                 break;
             }
 
@@ -226,13 +222,22 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice, bool removeOriginals) {
                     return;
                 }
             }
-            auto idxStr = QString::number(usbFile.gPhotoIndex());
+            auto filePath = usbFile.filePath();
 
             // Copy!
-            auto copyOutErr = runCmd({"gphoto2", "--get-file=" + idxStr, "-q", "--port=" + portPath}, outDirPath);
+            auto copyOutErr = runCmd({"gphoto2", "--get-file", filePath, "--port", portPath}, outDirPath);
             if (copyOutErr.hasError()) {
                 invokeOnMainThread([dev, copyOutErr] {
                     dev->setState(UsbDevice::Done, copyOutErr.err);
+                });
+                return;
+            }
+            // verify destination file
+            const auto filename = QFileInfo(usbFile.filePath()).fileName();
+            const auto outFilePath = outDirPath + '/' + filename;
+            if (!QFileInfo::exists(outFilePath)) {
+                invokeOnMainThread([dev, outFilePath] {
+                    dev->setState(UsbDevice::Error, "File not copied");
                 });
                 return;
             }
@@ -241,10 +246,10 @@ void UsbManager::downloadFiles(UsbDevice& usbDevice, bool removeOriginals) {
             if (removeOriginals) {
                 qDebug() << usbFile.filePath();
                 auto camPath = QFileInfo(usbFile.filePath()).dir().path();
-                auto remOutErr = runCmd({"gphoto2", "--delete-file=" + idxStr, "--port=" + portPath, "-f", camPath}, outDirPath);
+                auto remOutErr = runCmd({"gphoto2", "--delete-file", filePath, "--port", portPath}, outDirPath);
                 if (remOutErr.hasError()) {
                     invokeOnMainThread([dev, remOutErr] {
-                        dev->setState(UsbDevice::Done, remOutErr.err);
+                        dev->setState(UsbDevice::Error, remOutErr.err);
                     });
                     return;
                 }
@@ -301,4 +306,3 @@ void UsbManager::listenForEvents() {
 
     mDetectProcess.start("udevadm", {"monitor", "--kernel", "--subsystem-match=usb/usb_device"});
 }
-

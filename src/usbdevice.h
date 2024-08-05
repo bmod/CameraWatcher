@@ -12,21 +12,13 @@ namespace CamWatcher {
 
     class UsbFile {
     public:
-        UsbFile(int gPhotoIndex, QString filePath, QString flags, int kbSize, QString mediaType, int timeStamp);
-        [[nodiscard]] int gPhotoIndex() const;
+        UsbFile(QString filePath, int kbSize);
         [[nodiscard]] QString filePath() const;
-        [[nodiscard]] QString flags() const;
         [[nodiscard]] int kbSize() const;
-        [[nodiscard]] QString mediaType() const;
-        [[nodiscard]] int timeStamp() const;
 
     private:
-        int mGPhotoIndex;
         QString mFilePath;
-        QString mFlags;
         int mKbSize;
-        QString mMediaType;
-        int mTimeStamp;
     };
 
     class UsbDevice final : public QObject {
